@@ -1,7 +1,7 @@
 import "./ProductModal.css";
 
 function ProductModal({ product, onClose }) {
-  const { name, img, status } = product;
+  const { name, img, status, price } = product;
   return (
     <div className="product-modal" onClick={onClose}>
       <div
@@ -26,7 +26,7 @@ function ProductModal({ product, onClose }) {
           </h2>
 
           <p className="product-modal__price">
-            €49.99
+            ${price}
           </p>
 
           <span

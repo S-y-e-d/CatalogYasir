@@ -1,16 +1,23 @@
 import { useState } from "react";
 import "./CategoryFilterBar.css";
 
-function CategoryFilterBar() {
-  const [activeCategory, setActiveCategory] = useState("All");
+function CategoryFilterBar( {setProducts, products_sample} ) {
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  const handleCategoryClick = (category) => {
+    setActiveCategory(category);
+    if (category === "all") {
+      setProducts(products_sample);
+      return;
+    }
+    setProducts(products_sample.filter((product) => product.category === category));
+  }
 
   const categories = [
-    "All",
-    "Clothes",
-    "Shoes",
-    "Accessories",
-    "Electronics",
-    "Home",
+    "all",
+    "clothes",
+    "shoes",
+    "accessories",
   ];
 
   return (
@@ -23,9 +30,9 @@ function CategoryFilterBar() {
               ? "category-filter--active"
               : ""
           }`}
-          onClick={() => setActiveCategory(category)}
+          onClick={() => handleCategoryClick(category)}
         >
-          {category}
+          {category.charAt(0).toUpperCase() + category.slice(1)}
         </button>
       ))}
     </div>

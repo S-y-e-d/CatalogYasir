@@ -1,0 +1,17 @@
+.wishlist {
+    min-height: calc(100vh - var(--navbar-height));
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .wishlist {
+        min-height: calc(100vh - var(--navbar-height-mobile) - var(--navbar-height));
+    }
+}
+
+.wishlist-empty {
+    text-align: center;
+}

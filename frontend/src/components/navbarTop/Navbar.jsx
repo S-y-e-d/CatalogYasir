@@ -10,7 +10,7 @@ function Navbar() {
         </button>
 
         <a href="#" className="navbar__title">
-          Yasir Enterprise
+          YA Enterprise
         </a>
       </div>
 
