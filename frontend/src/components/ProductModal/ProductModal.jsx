@@ -17,7 +17,12 @@ function ProductModal({ product, onClose }) {
         </button>
 
         <div className="product-modal__image">
-          <img src={img} alt="product image" />
+          {product.image_path && (
+            <img
+              src={`http://localhost:3000${product.image_path}`}
+              alt={product.name}
+            />
+          )}
         </div>
 
         <div className="product-modal__info">
@@ -30,9 +35,9 @@ function ProductModal({ product, onClose }) {
           </p>
 
           <span
-            className={`product-modal__status product-modal__status--${status}`}
+            className={`product-modal__status product-modal__status--${status.toLowerCase()}`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status}
           </span>
 
           <div className="product-modal__description">

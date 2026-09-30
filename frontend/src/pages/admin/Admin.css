@@ -1,0 +1,42 @@
+.admin-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}
+
+.admin-login {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.admin-login h1 {
+  margin: 0 0 var(--spacing-xl);
+  text-align: center;
+}
+
+.admin-login form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.admin-login input {
+  width: 100%;
+}
+
+.admin-login button {
+  width: 100%;
+}
+
+.admin-login-error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 0.9rem;
+}

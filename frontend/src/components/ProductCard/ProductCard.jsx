@@ -1,12 +1,16 @@
 import "./ProductCard.css";
-import SampleProduct from '../../assets/sweater.png';
 
 function ProductCard({ product, onClick }) {
   const { name, img, status, price, category } = product;
   return (
     <article className="product-card" onClick={onClick}>
       <div className="product-card__image">
-        <img src={img} alt="product image" />
+        {product.image_path && (
+          <img
+            src={`http://localhost:3000${product.image_path}`}
+            alt={product.name}
+          />
+        )}
       </div>
 
       <div className="product-card__info">
@@ -16,10 +20,10 @@ function ProductCard({ product, onClick }) {
 
         <p className="product-card__price">
           ${price}
-        </p> 
+        </p>
 
-        <span className={`product-card__status product-card__status--${status}`}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
+        <span className={`product-card__status product-card__status--${status.toLowerCase()}`}>
+          {status}
         </span>
       </div>
     </article>
