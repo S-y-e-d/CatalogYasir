@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { UserIcon } from "../../assets/icons";
 import "./Navbar.css";
 
@@ -9,19 +10,21 @@ function Navbar() {
           ☰
         </button>
 
-        <a href="#" className="navbar__title">
+        <Link to="/" className="navbar__title">
           YA Enterprise
-        </a>
+        </Link>
       </div>
 
       <div className="navbar__links">
-        <a href="#">Home</a>
-        <a href="#">Wishlist</a>
-        <a href="#">About</a>
+        <Link to="/">Home</Link>
+        <Link to="/wishlist">Wishlist</Link>
+        <Link to="/about">About</Link>
       </div>
 
       <button className="navbar__profile" aria-label="Account">
-        <span className="navbar__profile-icon"><UserIcon/></span>
+        <span className="navbar__profile-icon">
+          <UserIcon />
+        </span>
       </button>
     </nav>
   );

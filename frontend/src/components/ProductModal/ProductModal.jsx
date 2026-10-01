@@ -1,7 +1,16 @@
 import "./ProductModal.css";
+import { HeartIcon } from "../../assets/icons";
+import { useWishlist } from "../../context/WishlistContext";
 
 function ProductModal({ product, onClose }) {
-  const { name, img, status, price } = product;
+  const { name, status, price } = product;
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const isSaved = isInWishlist(product.id);
+
+  function handleWishlistClick() {
+    toggleWishlist(product.id);
+  }
+
   return (
     <div className="product-modal" onClick={onClose}>
       <div
@@ -10,6 +19,7 @@ function ProductModal({ product, onClose }) {
       >
         <button
           className="product-modal__close"
+          type="button"
           onClick={onClose}
           aria-label="Close"
         >
@@ -20,19 +30,29 @@ function ProductModal({ product, onClose }) {
           {product.image_path && (
             <img
               src={`http://localhost:3000${product.image_path}`}
-              alt={product.name}
+              alt={name}
             />
           )}
         </div>
 
         <div className="product-modal__info">
-          <h2 className="product-modal__name">
-            {name}
-          </h2>
+          <div className="product-modal__title-row">
+            <h2 className="product-modal__name">{name}</h2>
 
-          <p className="product-modal__price">
-            ${price}
-          </p>
+            <button
+              type="button"
+              className={`wishlist-heart ${isSaved ? "wishlist-heart--active" : ""}`}
+              onClick={handleWishlistClick}
+              aria-label={
+                isSaved ? "Remove from wishlist" : "Add to wishlist"
+              }
+              aria-pressed={isSaved}
+            >
+              <HeartIcon />
+            </button>
+          </div>
+
+          <p className="product-modal__price">${price}</p>
 
           <span
             className={`product-modal__status product-modal__status--${status.toLowerCase()}`}
