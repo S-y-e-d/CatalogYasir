@@ -13,7 +13,7 @@ function AdminDashboard({ onLogout }) {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/products");
+      const response = await fetch("/api/products");
 
       if (!response.ok) {
         throw new Error("Failed to fetch products");
@@ -67,7 +67,7 @@ function AdminDashboard({ onLogout }) {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/api/products/${product.id}`,
+        `/api/products/${product.id}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -133,7 +133,7 @@ function AdminDashboard({ onLogout }) {
                   {product.image_path && (
                     <img
                       className="admin-product-image"
-                      src={`http://localhost:3000${product.image_path}`}
+                      src={`${product.image_path}`}
                       alt=""
                     />
                   )}

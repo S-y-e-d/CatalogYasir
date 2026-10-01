@@ -7,7 +7,8 @@ import { WishlistProvider } from './context/WishlistContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter basename='/CatalogYasir'>
+    {/* <BrowserRouter basename='/CatalogYasir'> */}
+    <BrowserRouter basename='/'>
       <WishlistProvider>
         <App />
       </WishlistProvider>

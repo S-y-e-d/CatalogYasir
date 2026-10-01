@@ -29,7 +29,7 @@ function ProductModal({ product, onClose }) {
         <div className="product-modal__image">
           {product.image_path && (
             <img
-              src={`http://localhost:3000${product.image_path}`}
+              src={`${product.image_path}`}
               alt={name}
             />
           )}

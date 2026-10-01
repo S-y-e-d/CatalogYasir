@@ -12,7 +12,7 @@ function Admin() {
     async function checkSession() {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/auth/me",
+          "/api/auth/me",
           {
             credentials: "include",
           },
@@ -42,7 +42,7 @@ function Admin() {
 
     try {
       const response = await fetch(
-        "http://localhost:3000/api/auth/login",
+        "/api/auth/login",
         {
           method: "POST",
           headers: {
@@ -72,7 +72,7 @@ function Admin() {
   async function handleLogout() {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/auth/logout",
+        "/api/auth/logout",
         {
           method: "POST",
           credentials: "include",

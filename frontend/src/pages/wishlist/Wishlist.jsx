@@ -15,7 +15,7 @@ function Wishlist() {
     async function fetchProducts() {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/products",
+          "/api/products",
         );
 
         if (!response.ok) {

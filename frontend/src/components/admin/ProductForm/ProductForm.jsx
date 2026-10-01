@@ -31,7 +31,7 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
       setImagePreview(
         product.image_path
-          ? `http://localhost:3000${product.image_path}`
+          ? `${product.image_path}`
           : "",
       );
     } else {
@@ -91,8 +91,8 @@ function ProductForm({ product, onCancel, onSuccess }) {
     }
 
     const url = isEditing
-      ? `http://localhost:3000/api/products/${product.id}`
-      : "http://localhost:3000/api/products";
+      ? `/api/products/${product.id}`
+      : "/api/products";
 
     const method = isEditing ? "PUT" : "POST";
 
