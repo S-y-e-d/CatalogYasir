@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./ProductForm.css";
+import { getProductImageUrl } from "../../../utils/productImage";
 
 function ProductForm({ product, onCancel, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -28,10 +29,9 @@ function ProductForm({ product, onCancel, onSuccess }) {
       });
 
       setImage(null);
-
       setImagePreview(
         product.image_path
-          ? `${product.image_path}`
+          ? getProductImageUrl(product.image_path)
           : "",
       );
     } else {
@@ -50,6 +50,14 @@ function ProductForm({ product, onCancel, onSuccess }) {
     setError("");
   }, [product]);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   function handleChange(event) {
     const { name, value } = event.target;
 
@@ -62,14 +70,23 @@ function ProductForm({ product, onCancel, onSuccess }) {
   function handleImageChange(event) {
     const file = event.target.files?.[0];
 
-    if (!file) {
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be 5 MB or smaller");
+      event.target.value = "";
       return;
     }
 
-    setImage(file);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Only JPEG, PNG, and WebP images are allowed");
+      event.target.value = "";
+      return;
+    }
 
-    const previewUrl = URL.createObjectURL(file);
-    setImagePreview(previewUrl);
+    setError("");
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
   }
 
   async function handleSubmit(event) {
@@ -78,44 +95,75 @@ function ProductForm({ product, onCancel, onSuccess }) {
     setError("");
     setLoading(true);
 
-    const data = new FormData();
-
-    data.append("name", formData.name);
-    data.append("price", formData.price);
-    data.append("category", formData.category);
-    data.append("status", formData.status);
-    data.append("description", formData.description);
-
-    if (image) {
-      data.append("image", image);
-    }
-
-    const url = isEditing
-      ? `/api/products/${product.id}`
-      : "/api/products";
-
-    const method = isEditing ? "PUT" : "POST";
-
     try {
+      let imagePath = product?.image_path || null;
+
+      if (image) {
+        const signResponse = await fetch("/api/uploads/sign", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: image.name,
+            contentType: image.type,
+          }),
+        });
+
+        const signData = await signResponse.json();
+
+        if (!signResponse.ok) {
+          throw new Error(
+            signData.message || "Could not prepare image upload",
+          );
+        }
+
+        const uploadResponse = await fetch(signData.signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": image.type,
+          },
+          body: image,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Could not upload image to Supabase");
+        }
+
+        imagePath = signData.imagePath;
+      }
+
+      const url = isEditing
+        ? `/api/products/${product.id}`
+        : "/api/products";
+
+      const method = isEditing ? "PUT" : "POST";
+
       const response = await fetch(url, {
         method,
         credentials: "include",
-        body: data,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          image_path: imagePath,
+        }),
       });
 
       const responseData = await response.json();
 
       if (!response.ok) {
-        setError(
+        throw new Error(
           responseData.message ||
-            `Could not ${isEditing ? "update" : "create"} product`,
+          `Could not ${isEditing ? "update" : "create"} product`,
         );
-        return;
       }
 
       onSuccess(responseData);
-    } catch {
-      setError("Could not connect to the server");
+    } catch (err) {
+      setError(err.message || "Could not connect to the server");
     } finally {
       setLoading(false);
     }
@@ -136,7 +184,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
       <div className="product-form-fields">
         <div className="product-form-field">
           <label htmlFor="product-name">Name</label>
-
           <input
             id="product-name"
             type="text"
@@ -150,7 +197,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <div className="product-form-field">
           <label htmlFor="product-price">Price</label>
-
           <input
             id="product-price"
             type="number"
@@ -166,7 +212,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <div className="product-form-field">
           <label htmlFor="product-category">Category</label>
-
           <input
             id="product-category"
             type="text"
@@ -180,7 +225,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <div className="product-form-field">
           <label htmlFor="product-status">Status</label>
-
           <select
             id="product-status"
             name="status"
@@ -195,7 +239,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <div className="product-form-field product-form-field-full">
           <label htmlFor="product-description">Description</label>
-
           <textarea
             id="product-description"
             name="description"
@@ -208,7 +251,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <div className="product-form-field product-form-field-full">
           <label htmlFor="product-image">Image</label>
-
           <input
             id="product-image"
             type="file"
@@ -219,19 +261,14 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
           {imagePreview && (
             <div className="product-form-image-preview">
-              <img
-                src={imagePreview}
-                alt="Product preview"
-              />
+              <img src={imagePreview} alt="Product preview" />
             </div>
           )}
         </div>
       </div>
 
       {error && (
-        <p className="product-form-error">
-          {error}
-        </p>
+        <p className="product-form-error">{error}</p>
       )}
 
       <div className="product-form-actions">
@@ -241,9 +278,7 @@ function ProductForm({ product, onCancel, onSuccess }) {
 
         <button type="submit" disabled={loading}>
           {loading
-            ? isEditing
-              ? "Saving..."
-              : "Adding..."
+            ? "Uploading and saving..."
             : isEditing
               ? "Save Changes"
               : "Add Product"}

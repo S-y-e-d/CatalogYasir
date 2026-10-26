@@ -1,6 +1,7 @@
 import "./ProductModal.css";
 import { HeartIcon } from "../../assets/icons";
 import { useWishlist } from "../../context/WishlistContext";
+import { getProductImageUrl } from "../../utils/productImage";
 
 function ProductModal({ product, onClose }) {
   const { name, status, price } = product;
@@ -29,7 +30,7 @@ function ProductModal({ product, onClose }) {
         <div className="product-modal__image">
           {product.image_path && (
             <img
-              src={`${product.image_path}`}
+              src={getProductImageUrl(product.image_path)}
               alt={name}
             />
           )}

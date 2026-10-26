@@ -3,11 +3,11 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const supabase = require("./supabase");
 
-const db = require("./db");
+const pgSession = require("connect-pg-simple")(session);
+const pool = require("./db");
+
 const { login } = require("./auth");
 
 const {
@@ -19,48 +19,11 @@ const {
 } = require("./products");
 
 const app = express();
-const PORT = 3000;
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
-const uploadDirectory = path.join(
-  __dirname,
-  "uploads",
-  "products",
-);
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDirectory);
-  },
-
-  filename: (_req, file, cb) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`;
-
-    cb(null, filename);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-  fileFilter: (_req, file, cb) => {
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-
-    if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
-    }
-
-    cb(null, true);
-  },
-});
+const PORT = process.env.PORT || 3000;
 
 app.use(
   cors({
@@ -73,19 +36,22 @@ app.use(express.json());
 
 app.use(
   session({
+    store: new pgSession({
+      pool,
+      tableName: "user_sessions",
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24,
     },
   }),
 );
-
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 function requireAdmin(req, res, next) {
   if (req.session.isAdmin !== true) {
@@ -97,48 +63,124 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function deleteImage(imagePath) {
-  if (!imagePath) {
+async function deleteImage(imagePath) {
+  if (!imagePath || imagePath.startsWith("/")) {
     return;
   }
 
-  const filename = path.basename(imagePath);
-  const filePath = path.join(uploadDirectory, filename);
+  const { error } = await supabase.storage
+    .from("product-images")
+    .remove([imagePath]);
 
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+  if (error) {
+    console.error("Could not delete image from Supabase:", error);
   }
 }
 
-app.get("/api/test", (req, res) => {
+app.get("/api/test", (_req, res) => {
   res.json({
     message: "Backend is working!",
   });
 });
 
-app.post("/api/auth/login", async (req, res) => {
-  const { password } = req.body;
+app.post("/api/uploads/sign", requireAdmin, async (req, res) => {
+  try {
+    const { filename, contentType } = req.body;
 
-  if (!password) {
-    return res.status(400).json({
-      message: "Password is required",
+    const allowedTypes = {
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+    };
+
+    if (!filename || !allowedTypes[contentType]) {
+      return res.status(400).json({
+        message: "A valid JPEG, PNG, or WebP image is required",
+      });
+    }
+
+    const crypto = require("crypto");
+    const imagePath = `${crypto.randomUUID()}${allowedTypes[contentType]}`;
+
+    const { data, error } = await supabase.storage
+      .from("product-images")
+      .createSignedUploadUrl(imagePath);
+
+    if (error) {
+      console.error("Supabase upload URL error:", error);
+
+      return res.status(500).json({
+        message: "Could not prepare image upload",
+      });
+    }
+
+    res.json({
+      signedUrl: data.signedUrl,
+      token: data.token,
+      imagePath,
+    });
+  } catch (error) {
+    console.error("Upload signing error:", error);
+
+    res.status(500).json({
+      message: "Could not prepare image upload",
     });
   }
-
-  const valid = await login(password);
-
-  if (!valid) {
-    return res.status(401).json({
-      message: "Invalid password",
-    });
-  }
-
-  req.session.isAdmin = true;
-
-  res.json({
-    success: true,
-  });
 });
+
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        message: "Password is required",
+      });
+    }
+
+    const valid = await login(password);
+
+    if (!valid) {
+      return res.status(401).json({
+        message: "Invalid password",
+      });
+    }
+
+    req.session.regenerate((error) => {
+      if (error) {
+        console.error("Session regeneration error:", error);
+
+        return res.status(500).json({
+          message: "Could not log in",
+        });
+      }
+
+      req.session.isAdmin = true;
+
+      req.session.save((error) => {
+        if (error) {
+          console.error("Session save error:", error);
+
+          return res.status(500).json({
+            message: "Could not log in",
+          });
+        }
+
+        res.json({
+          success: true,
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+
+    res.status(500).json({
+      message: "Could not log in",
+    });
+  }
+});
+
 
 app.get("/api/auth/me", (req, res) => {
   res.json({
@@ -147,8 +189,8 @@ app.get("/api/auth/me", (req, res) => {
 });
 
 app.post("/api/auth/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
+  req.session.destroy((error) => {
+    if (error) {
       return res.status(500).json({
         message: "Could not log out",
       });
@@ -165,7 +207,15 @@ app.post("/api/auth/logout", (req, res) => {
 function validateProduct(product) {
   const { name, price, category, status } = product;
 
-  if (!name || !category || price === undefined || !status) {
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    typeof category !== "string" ||
+    !category.trim() ||
+    price === undefined ||
+    price === "" ||
+    !status
+  ) {
     return "Name, price, category, and status are required";
   }
 
@@ -173,72 +223,84 @@ function validateProduct(product) {
     return "Invalid product status";
   }
 
-  if (Number.isNaN(Number(price)) || Number(price) < 0) {
-    return "Price must be a valid positive number";
+  if (!Number.isFinite(Number(price)) || Number(price) < 0) {
+    return "Price must be a valid non-negative number";
+  }
+
+  if (
+    product.image_path !== null &&
+    product.image_path !== undefined &&
+    typeof product.image_path !== "string"
+  ) {
+    return "Invalid image path";
   }
 
   return null;
 }
 
-app.get("/api/products", (req, res) => {
-  const products = getProducts();
-  res.json(products);
-});
+app.get("/api/products", async (_req, res) => {
+  try {
+    const products = await getProducts();
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
 
-app.get("/api/products/:id", (req, res) => {
-  const product = getProduct(req.params.id);
-
-  if (!product) {
-    return res.status(404).json({
-      message: "Product not found",
+    res.status(500).json({
+      message: "Could not fetch products",
     });
   }
-
-  res.json(product);
 });
 
-app.post(
-  "/api/products",
-  requireAdmin,
-  upload.single("image"),
-  (req, res) => {
+app.get("/api/products/:id", async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.error("Error fetching product:", error);
+
+    res.status(500).json({
+      message: "Could not fetch product",
+    });
+  }
+});
+
+app.post("/api/products", requireAdmin, async (req, res) => {
+  try {
     const error = validateProduct(req.body);
 
     if (error) {
-      if (req.file) {
-        deleteImage(`/uploads/products/${req.file.filename}`);
-      }
-
       return res.status(400).json({
         message: error,
       });
     }
 
-    const imagePath = req.file
-      ? `/uploads/products/${req.file.filename}`
-      : null;
-
-    const product = createProduct({
+    const product = await createProduct({
       ...req.body,
-      image_path: imagePath,
+      image_path: req.body.image_path || null,
     });
 
     res.status(201).json(product);
-  },
-);
+  } catch (error) {
+    console.error("Error creating product:", error);
 
-app.put(
-  "/api/products/:id",
-  requireAdmin,
-  upload.single("image"),
-  (req, res) => {
-    const existingProduct = getProduct(req.params.id);
+    res.status(500).json({
+      message: "Could not create product",
+    });
+  }
+});
+
+app.put("/api/products/:id", requireAdmin, async (req, res) => {
+  try {
+    const existingProduct = await getProduct(req.params.id);
 
     if (!existingProduct) {
-      if (req.file) {
-        deleteImage(`/uploads/products/${req.file.filename}`);
-      }
-
       return res.status(404).json({
         message: "Product not found",
       });
@@ -247,56 +309,76 @@ app.put(
     const error = validateProduct(req.body);
 
     if (error) {
-      if (req.file) {
-        deleteImage(`/uploads/products/${req.file.filename}`);
-      }
-
       return res.status(400).json({
         message: error,
       });
     }
 
-    const imagePath = req.file
-      ? `/uploads/products/${req.file.filename}`
-      : existingProduct.image_path;
+    const imagePath =
+      req.body.image_path === undefined
+        ? existingProduct.image_path
+        : req.body.image_path || null;
 
-    const product = updateProduct(req.params.id, {
+    const product = await updateProduct(req.params.id, {
       ...req.body,
       image_path: imagePath,
     });
 
-    if (req.file && existingProduct.image_path) {
-      deleteImage(existingProduct.image_path);
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    if (
+      existingProduct.image_path &&
+      existingProduct.image_path !== product.image_path
+    ) {
+      await deleteImage(existingProduct.image_path);
     }
 
     res.json(product);
-  },
-);
+  } catch (error) {
+    console.error("Error updating product:", error);
 
-app.delete("/api/products/:id", requireAdmin, (req, res) => {
-  const product = getProduct(req.params.id);
-
-  if (!product) {
-    return res.status(404).json({
-      message: "Product not found",
+    res.status(500).json({
+      message: "Could not update product",
     });
   }
+});
 
-  const deleted = deleteProduct(req.params.id);
+app.delete("/api/products/:id", requireAdmin, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
 
-  if (!deleted) {
-    return res.status(500).json({
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    const deleted = await deleteProduct(req.params.id);
+
+    if (!deleted) {
+      return res.status(500).json({
+        message: "Could not delete product",
+      });
+    }
+
+    await deleteImage(product.image_path);
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+
+    res.status(500).json({
       message: "Could not delete product",
     });
   }
-
-  deleteImage(product.image_path);
-
-  res.json({
-    success: true,
-  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

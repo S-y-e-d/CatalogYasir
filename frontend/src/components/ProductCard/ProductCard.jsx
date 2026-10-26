@@ -1,6 +1,7 @@
 import "./ProductCard.css";
 import { HeartIcon } from "../../assets/icons";
 import { useWishlist } from "../../context/WishlistContext";
+import { getProductImageUrl } from "../../utils/productImage";
 
 function ProductCard({ product, onClick }) {
   const { name, status, price } = product;
@@ -17,7 +18,7 @@ function ProductCard({ product, onClick }) {
       <div className="product-card__image">
         {product.image_path && (
           <img
-            src={`${product.image_path}`}
+            src={getProductImageUrl(product.image_path)}
             alt={name}
           />
         )}

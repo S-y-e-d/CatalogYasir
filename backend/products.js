@@ -1,53 +1,45 @@
-const db = require("./db");
+const pool = require("./db");
 
-function getProducts() {
-  return db
-    .prepare(
-      `
-      SELECT
-        id,
-        name,
-        description,
-        price,
-        category,
-        status,
-        image_path,
-        created_at,
-        updated_at
-      FROM products
-      ORDER BY created_at DESC
-    `,
-    )
-    .all();
+const PRODUCT_COLUMNS = `
+  id,
+  name,
+  description,
+  price,
+  category,
+  status,
+  image_path,
+  created_at,
+  updated_at
+`;
+
+async function getProducts() {
+  const result = await pool.query(`
+    SELECT ${PRODUCT_COLUMNS}
+    FROM products
+    ORDER BY created_at DESC
+  `);
+
+  return result.rows;
 }
 
-function getProduct(id) {
-  return db
-    .prepare(
-      `
-      SELECT
-        id,
-        name,
-        description,
-        price,
-        category,
-        status,
-        image_path,
-        created_at,
-        updated_at
+async function getProduct(id) {
+  const result = await pool.query(
+    `
+      SELECT ${PRODUCT_COLUMNS}
       FROM products
-      WHERE id = ?
+      WHERE id = $1
     `,
-    )
-    .get(id);
+    [id],
+  );
+
+  return result.rows[0] || null;
 }
 
-function createProduct(product) {
+async function createProduct(product) {
   const { name, description, price, category, status, image_path } = product;
 
-  const result = db
-    .prepare(
-      `
+  const result = await pool.query(
+    `
       INSERT INTO products (
         name,
         description,
@@ -56,55 +48,45 @@ function createProduct(product) {
         status,
         image_path
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING ${PRODUCT_COLUMNS}
     `,
-    )
-    .run(name, description, price, category, status, image_path);
+    [name, description, price, category, status, image_path],
+  );
 
-  return getProduct(result.lastInsertRowid);
+  return result.rows[0];
 }
 
-function updateProduct(id, product) {
+async function updateProduct(id, product) {
   const { name, description, price, category, status, image_path } = product;
 
-  const result = db
-    .prepare(
-      `
+  const result = await pool.query(
+    `
       UPDATE products
       SET
-        name = ?,
-        description = ?,
-        price = ?,
-        category = ?,
-        status = ?,
-        image_path = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+        name = $1,
+        description = $2,
+        price = $3,
+        category = $4,
+        status = $5,
+        image_path = $6,
+        updated_at = NOW()
+      WHERE id = $7
+      RETURNING ${PRODUCT_COLUMNS}
     `,
-    )
-    .run(
-      name,
-      description,
-      price,
-      category,
-      status,
-      image_path,
-      id,
-    );
+    [name, description, price, category, status, image_path, id],
+  );
 
-  if (result.changes === 0) {
-    return null;
-  }
-
-  return getProduct(id);
+  return result.rows[0] || null;
 }
 
-function deleteProduct(id) {
-  const result = db
-    .prepare("DELETE FROM products WHERE id = ?")
-    .run(id);
+async function deleteProduct(id) {
+  const result = await pool.query(
+    "DELETE FROM products WHERE id = $1",
+    [id],
+  );
 
-  return result.changes > 0;
+  return result.rowCount > 0;
 }
 
 module.exports = {

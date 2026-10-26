@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ProductForm from "../ProductForm/ProductForm";
 import "./AdminDashboard.css";
+import { getProductImageUrl } from "../../../utils/productImage";
 
 function AdminDashboard({ onLogout }) {
   const [products, setProducts] = useState([]);
@@ -133,7 +134,7 @@ function AdminDashboard({ onLogout }) {
                   {product.image_path && (
                     <img
                       className="admin-product-image"
-                      src={`${product.image_path}`}
+                      src={getProductImageUrl(product.image_path)}
                       alt=""
                     />
                   )}
