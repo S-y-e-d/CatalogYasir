@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://catalog-yasir-7pt5p2pn0-ya-enterprises.vercel.app/api/:path*"
+      "destination": "https://catalog-yasir-api.vercel.app/api/:path"
     },
     {
       "source": "/(.*)",
