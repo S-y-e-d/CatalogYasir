@@ -149,6 +149,7 @@ function ProductForm({ product, onCancel, onSuccess }) {
         body: JSON.stringify({
           ...formData,
           image_path: imagePath,
+          price: formData.price === "" ? 0 : Number(formData.price),
         }),
       });
 
@@ -206,7 +207,6 @@ function ProductForm({ product, onCancel, onSuccess }) {
             min="0"
             step="0.01"
             placeholder="0.00"
-            required
           />
         </div>
 

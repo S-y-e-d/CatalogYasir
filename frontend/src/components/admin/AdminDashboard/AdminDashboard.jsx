@@ -145,7 +145,9 @@ function AdminDashboard({ onLogout }) {
 
                 <div>{product.category}</div>
 
-                <div>€{product.price}</div>
+                <div>
+                  {Number(product.price) !== 0 && `₹${product.price}`}
+                </div>
 
                 <div>
                   <span

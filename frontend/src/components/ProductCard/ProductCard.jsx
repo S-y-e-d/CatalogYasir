@@ -39,7 +39,9 @@ function ProductCard({ product, onClick }) {
       <div className="product-card__info">
         <h3 className="product-card__name">{name}</h3>
 
-        <p className="product-card__price">${price}</p>
+        <p className="product-card__price">
+          {Number(price) !== 0 && `₹${price}`}
+        </p>
 
         <span
           className={`product-card__status product-card__status--${status.toLowerCase()}`}

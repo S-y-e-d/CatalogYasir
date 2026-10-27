@@ -53,7 +53,9 @@ function ProductModal({ product, onClose }) {
             </button>
           </div>
 
-          <p className="product-modal__price">${price}</p>
+          <p className="product-modal__price">
+            {Number(price) !== 0 && `₹${price}`}
+          </p>
 
           <span
             className={`product-modal__status product-modal__status--${status.toLowerCase()}`}
